@@ -41,7 +41,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           res.status(400).json({ message: e.errors.map(err => err.message).join(", ") });
        } else {
           console.error("Error creating expense:", e);
-          const errorMessage = e instanceof Error ? e.message : "Internal server error";
+          // Get more detailed error information
+          let errorMessage = "Internal server error";
+          if (e instanceof Error) {
+            errorMessage = e.message;
+            // Check for common database errors
+            if (e.message.includes("relation") && e.message.includes("does not exist")) {
+              errorMessage = "Database table not found. Please run migrations to create the expenses table.";
+            } else if (e.message.includes("connection") || e.message.includes("ECONNREFUSED")) {
+              errorMessage = "Database connection failed. Please check your DATABASE_URL environment variable.";
+            }
+          }
+          console.error("Full error details:", {
+            message: errorMessage,
+            stack: e instanceof Error ? e.stack : undefined,
+            error: e
+          });
           res.status(500).json({ message: errorMessage });
        }
     }
